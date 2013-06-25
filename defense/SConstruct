@@ -1,0 +1,7 @@
+# from http://zerokspot.com/weblog/2007/09/24/automating-stuff-with-scons/
+# and http://u.arboreus.com/2008/07/auto-building-latex-documents-with.html
+import os
+env = Environment(ENV=os.environ)
+source_list = ["defense.tex"]
+pdf_output = env.PDF(target="defense.pdf", source="defense.tex")
+Depends(pdf_output, source_list)

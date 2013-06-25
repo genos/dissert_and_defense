@@ -1,0 +1,31 @@
+Alice and Bob wish to communicate in private, so they need a shared secret key.
+
+
+Alice first picks a secret random number a =
+10582230386582042969237721342986301254891720029263
+with the same number of bits as m (the size of our group)...
+
+...then sends Bob the point pA = a * P (the generator) =
+    (0x325292b6786653bc201777d7ce8f78ad2b7293bf5 :
+     0xadc4e7fb280edc5b490bf5a0200716435af252064 :
+     0x1)
+
+Bob also picks a secret random number b =
+6842965894516648772563843478507619750018805216122
+Then he sends Alice the point bP = b * P =
+    (0x0d48849159e4d4af5fbfe0d25841ebf5da8200793 :
+     0xac71cbbf9c6b620a45a52ec50cdd4c52f10e07a05 :
+     0x1)
+
+Then Alice takes a and multiplies it by bP to get key_a =
+    (0x9b003af9bf9ff81875b26c8873ac866413199742 :
+     0x77bb1c163e1fdacd2eefba7941a9dc5b7de4838c2 :
+     0x1)
+Similarly, Bob calculates key_b = b * aP =
+    (0x9b003af9bf9ff81875b26c8873ac866413199742 :
+    0x77bb1c163e1fdacd2eefba7941a9dc5b7de4838c2 :
+    0x1)
+    
+Are these in fact the same key?
+Yes!
+So now they share a secret key, and can communicate securely.

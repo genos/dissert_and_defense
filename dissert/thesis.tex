@@ -1,0 +1,90 @@
+\documentclass[12pt]{article}
+
+\usepackage{package/thesis}
+\usepackage{package/unccspecs}
+% typesetting math
+\usepackage{amsmath, amssymb, amsthm, xfrac}
+% figures
+\usepackage{graphicx, multicol, subfigure}
+% sourcecode
+\usepackage{color}
+\usepackage{listings}
+\definecolor{dkgreen}{rgb}{0, 0.6, 0}
+\definecolor{gray}{rgb}{0.5, 0.5, 0.5}
+\definecolor{mauve}{rgb}{0.58, 0, 0.82}
+\lstset{backgroundcolor=\color{white},
+        basicstyle=\footnotesize\ttfamily,
+        breaklines=false,
+        columns=[l]flexible,
+        commentstyle=\color{dkgreen},
+        keywordstyle=\color{blue},
+        language=C++,
+        numbers=left,
+        numbersep=5pt,
+        numberstyle=\tiny\color{gray},
+        showspaces=false,
+        showstringspaces=false,
+        stringstyle=\color{mauve}
+}
+
+% algorithms
+\usepackage{float}
+\newfloat{Algorithm}{t}{lop}
+%\usepackage{algorithm}
+\usepackage{algpseudocode}
+\algrenewcommand{\algorithmicdo}{\textrm{do}}
+\algrenewcommand{\algorithmicelse}{\textrm{else}}
+\algrenewcommand{\algorithmicend}{\textrm{end}}
+\algrenewcommand{\algorithmicfunction}{\textrm{function}}
+\algrenewcommand{\algorithmicfor}{\textrm{for}}
+\algrenewcommand{\algorithmicif}{\textrm{if}}
+\algrenewcommand{\algorithmicthen}{\textrm{then}}
+\algrenewcommand{\algorithmicreturn}{\textrm{return}}
+\algrenewcommand{\algorithmicwhile}{\textrm{while}}
+
+% equation/figure number
+\numberwithin{section}{chapter}
+\numberwithin{subsection}{section}
+\numberwithin{equation}{chapter}
+\numberwithin{figure}{chapter}
+\numberwithin{Algorithm}{chapter}
+\numberwithin{table}{chapter}
+
+% theorem/etc. numbering
+\theoremstyle{remark}
+\newtheorem{thm}{Theorem}[bodychapter]
+\newtheorem{cor}[thm]{Corollary}
+\newtheorem{prop}[thm]{Proposition}
+\newtheorem{lem}[thm]{Lemma}
+\newtheorem{dfn}{Definition}[bodychapter]
+\newtheorem{ex}[dfn]{Example}
+\newtheorem{rem}[dfn]{Remark}
+\newtheorem{prob}[dfn]{Problem}
+\newtheorem{cryp}[dfn]{Cryptosystem}
+
+\begin{document}
+
+\startprelim
+\input{frontmatter/cover}
+\input{frontmatter/abstract}
+\input{frontmatter/acknowledgements}
+\input{frontmatter/dedication}
+\tableofcontents
+
+\startbody
+\input{chapters/intro}
+\input{chapters/chapter2}
+\input{chapters/chapter3}
+\input{chapters/chapter4}
+\input{chapters/chapter5}
+\input{chapters/chapter6}
+\input{chapters/chapter7}
+\appendix
+\singlespacing
+\input{chapters/appendixA}
+
+\startbib
+\bibliography{backmatter/references}
+\finishbib
+
+\end{document}

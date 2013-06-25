@@ -1,0 +1,12 @@
+# from http://zerokspot.com/weblog/2007/09/24/automating-stuff-with-scons/
+# and http://u.arboreus.com/2008/07/auto-building-latex-documents-with.html
+import os
+env = Environment(ENV=os.environ)
+source_list = ["thesis.tex",
+               Glob("frontmatter/*.tex"),
+               Glob("chapters/*.tex"),
+               Glob("figures/*.pdf"),
+               Glob("figures/*.png"),
+               "backmatter/references.bib"]
+pdf_output = env.PDF(target="thesis.pdf", source="thesis.tex")
+Depends(pdf_output, source_list)

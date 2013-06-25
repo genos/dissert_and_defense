@@ -1,0 +1,319 @@
+\bodychapter{\texttt{e2c2}: A C++11 library for Edwards ECC}
+\label{chp:e2c2}
+
+In order to explore the theory and implementation of Edwards curves for
+    Elliptic Curve Cryptography, I've created a modern C++11 software library
+    called \texttt{e2c2}.
+In this chapter, we'll discuss the design and rationale behind \texttt{e2c2},
+    its organization, and a few examples of its functionality.
+
+
+\bodysection{Rationale and Design Choices}
+
+\texttt{e2c2} was designed to be a software library that was simple enough to
+    use but close enough to a practical implementation that software engineers
+    could use it as a template or a stand-in for a practical cryptographic
+    library.
+As such, it strikes a balance between usability and speed and between clarity
+    of exposition and being closer to ``production-level code.''
+
+\bodysubsection{C++11}
+
+Probably the most obvious design choice was picking C++, specifically the
+    newest standard C++11, for the programming language.
+Though not as low-level as C, C++ still gives us decent enough control over
+    the underlying specifics of the machine.
+Since it's a compiled language with a long history of implementation, it
+    creates very fast binaries.
+Furthermore, C++ is available on a number of platforms, so portability is less
+    of an issue.
+These characteristics combine to make C++ a viable choice for a cryptography
+    implementation seeking to bridge the gap between mathematical theory and
+    programming practice.
+
+Even more helpful was the expressiveness of the new C++ language standard,
+    C++11\cite{jtcsc22}.
+This new standard adds interesting and useful constructs to the language, many
+    of which are used in our library.
+These improvements---like type inference, lambda functions and expressions, and
+    range-based for-loops---make C++ an easier language in which to implement
+    complex mathematical and cryptographic concepts.
+What's more, this new level of expressiveness comes at no obvious loss of
+    execution speed.
+
+\bodysubsection{NTL and GMP}
+
+The next important choice was choosing to use software libraries that abstract
+    away the details of arbitrary precision integers and foundational number
+    theory concepts.
+The GNU Multiple Precision Arithmetic Library, better known as GNU MP or GMP,
+    is a free and open-source library for arbitrary-precision arithmetic with
+    integers and rational numbers.\cite{granlund1996gnu}
+Though a true full-blown production-level cryptographic library might choose to
+    implement its own big integer arithmetic for ultimate control, speed, and
+    safety, GMP is tried and tested enough after over 15 years of development
+    to be included here in our library that's trying to be a mix of
+    proof-of-concept and implementation guide.
+
+I used Victor Shoup's Number Theory Library---NTL for short---for the same
+    reasons, only more so.\cite{shoup2009ntl}
+NTL is a C++ library for doing number theory; to quote its website,
+\begin{quote}
+NTL is a high-performance, portable C++ library providing data structures and
+    algorithms for manipulating signed, arbitrary length integers, and for
+    vectors, matrices, and polynomials over the integers and over finite
+    fields.
+NTL provides high quality implementations of state-of-the-art algorithms for:
+\begin{itemize}
+\item arbitrary length integer arithmetic and arbitrary precision floating
+    point arithmetic;
+\item polynomial arithmetic over the integers and finite fields including basic
+    arithmetic, polynomial factorization, irreducibility testing, computation
+    of minimal polynomials, traces, norms, and more;
+\item lattice basis reduction, including very robust and fast implementations
+    of Schnorr-Euchner, block Korkin-Zolotarev reduction, and the new
+    Schnorr-Horner pruning heuristic for block Korkin-Zolotarev;
+\item basic linear algebra over the integers, finite fields, and arbitrary
+    precision floating point numbers.
+\end{itemize}
+NTL's polynomial arithmetic is one of the fastest available anywhere, and has
+    been used to set ``world records'' for polynomial factorization and
+    determining orders of elliptic curves.
+\end{quote}
+NTL does most of the heavy lifting when it comes to finite field computations
+    in \texttt{e2c2}; it is only linked against GMP at compile time to take
+    advantage of some of its code for enhanced performance.
+To quote the project's website again, the main reason for choosing NTL is
+    because ``It provides a good environment for easily and quickly
+    implementing new number-theoretic algorithms, without sacrificing
+    performance.''
+
+In some regards, \texttt{e2c2} can be seen as an extension of NTL.
+It uses portions of NTL to implement Edwards curves in a way that blends well
+    with the rest of NTL, and the line between where NTL stops and
+    \texttt{e2c2} starts need not be of much concern to users of this
+    library.\footnote{Especially if C++ projects using \texttt{e2c2} prefaces
+    any major portions of code with the directives
+    ``\texttt{using namespace NTL}'' and ``\texttt{using namespace e2c2},'' as
+    in the examples we'll show later.}
+
+\bodysubsection{Template Specialization Instead of Inheritance}
+
+The last design choice we'll discuss will probably only be of concern to
+    aficionados of C++ (or perhaps another object-oriented language).
+Though curves and points are implemented as classes in \texttt{e2c2}, the
+    library is written using template specialization instead of class
+    inheritance.
+This gave me the ability to use the illusion of inheritance in constructing
+    \texttt{e2c2}, sharing common functionality between different types of
+    curves or different types of points, without the added runtime penalties
+    that can be associated with virtual function lookup.
+Moreover, C++ templates are expanded at compile time (and much can be inlined
+    by a compiler), thereby only charging the programmer for what they use.
+Another added bonus of using template specialization over inheritance is ease
+    of portability and use; \texttt{e2c2} consists entirely of C++ header
+    files, four specifying the implementation and one single \texttt{e2c2.h}
+    interface header to be included in projects.
+This means that \texttt{e2c2} is quite compact, and it is simple to share or
+    extend the sourcecode.
+It's compact enough that the entire source for \texttt{e2c2} and examples of
+    its usage is included in Appendix \ref{chp:src}.
+
+Readers interested in learning more about C++ templates should consult
+    \cite{stroustrup1997c++}.
+
+\bodysection{Curves and Points}
+
+We now get into the actual details of \texttt{e2c2}'s code.
+First up is a description of its fundamental objects: curves and points.
+
+\bodysubsection{\texttt{curves.h}}
+
+The code for curves in contained in the header file \texttt{curves.h}.
+Curves are implemented as templates based on two parameters: an element type
+    (one of NTL's ``ZZ\_pE'' or ``GF2E'' datatypes) and a C++
+    enumeration\footnote{Actually it's a C++11 strongly typed enumeration for
+    added typesafety peace of mind.} called ``CurveID'' (to help distinguish
+    between two types of curves that have the same base element type).
+Each curve type has two field elements called $c$ and $d$ as members; these
+    correspond to the $c$ and $d$ of Edwards curves, $a$ and $d$ in twisted
+    Edwards curves, and $d_1$ and $d_2$ in binary Edwards curves.
+They also have an NTL ZZ $m$ that gives the cardinality of the curve (i.e., the
+    number of rational points on the curve over the field in question).
+
+Besides the usual C++ member functions (i.e. constructors and destructors),
+    curves have four member functions.
+Through C++'s operator overloading, curves can be compared for equality or
+    inequality with the usual operators (\texttt{==} and \texttt{!=}).
+They can also tell you their cardinality via calls to \texttt{cardinality()}
+    and information about them can be printed to an output stream via the
+    \texttt{<<} operator.
+
+Each curve specialization---OddCurve, TwistedCurve, and BinaryCurve---provides
+    four things.
+The first is an alias typedef from the verbose template name to the shorted
+    curve name for ease of use.
+Then each specialization provides three functions that are used in their member
+    functions:
+\begin{itemize}
+\item   \texttt{getName}, when given a curve as an argument, returns a human
+    readable string describing the type of curve; this is used when the curve
+    information is printed to an output stream
+\item   \texttt{parametersValid}, when given a curve as an argument, returns a
+    boolean value which checks whether the curve parameters $c$ and $d$ are
+    valid; this is used in curve construction to ensure that the curve being
+    built matches the requirements given in the various papers about it
+\item   \texttt{curveEquation}, when given a curve and an $x$ and $y$
+    coordinate, returns a boolean value that specifies whether the two
+    coordinates describe a point lying on the curve or not; this is used when
+    points are constructed (to be described shortly)
+\end{itemize}
+
+To construct a curve, one first builds the appropriate field via NTL, then
+    calls the specific Curve constructor with $c$, $d$, and $m$ specified.
+For an example, see \texttt{curves\_test.cc} (described below).
+
+\bodysubsection{\texttt{points.h}}
+
+As you might expect, points are a little more complicated.
+There are two base class templates for points: ``Affine'' and ``Projective.''
+Each point has a curve to which it is assigned; in addition, Affine points have
+    two coordinates ($x$ and $y$), while Projective points have three
+    coordinates ($x$, $y$, and $z$).
+Though Affine points can only interact with Affine points at this time, and
+    likewise Projective, there is a copy constructor from Affine to Projective;
+    i.e. if \texttt{a} is a BinaryAff, one can write the following:
+\begin{lstlisting}
+auto p = BinaryProj(a);
+\end{lstlisting}
+    to create a projective version of \texttt{a}.\footnote{This copy
+    constructor has been declared \texttt{explicit}, so there shouldn't be any
+    surprises about when this conversion takes place.}
+
+Beyond the obvious difference in the number of coordinates, Affine and
+    Projective points have all the same member functions. 
+Points can be compared for equality and inequality, tested for whether they're
+    the identity element, added or subtracted (both with \texttt{+}, \texttt{-}
+    and \texttt{+=}, \texttt{-=}), doubled, and multiplied by a scalar.
+Scalar multiplication is implemented with Montgomery's ladder, and incorporates
+    the suggested ``wrap-around'' to counteract Brumley and Tuveri's timing
+    attack from \cite{brumley2011timing}.
+
+An example of point functionality is given in \texttt{points\_test.cc}, which
+    we will soon discuss.
+
+\bodysection{Utilities and Subroutines}
+
+\texttt{e2c2} has two scaffolding files that support the real work, the first
+    of which is the header \texttt{mol.h}.
+
+\bodysubsection{\texttt{mol.h}}
+
+This header file is named for the authors of \cite{moloneyefficient}.
+In it there are a number of functions and routines that implement the ideas
+    from that paper.
+Some are only used by other functions in the same file, but probably most
+    important is \texttt{mol\_alg\_1}.
+If fed a long $n$, representing the degree of the extension field
+    $\mathbb{F}_{2^n}$, and two elements of this field $a_2$ and $a_6$ that
+    specify a binary elliptic curve in Weierstrass form, this algorithm
+    computes the $d_1$ value that specifies the birationally equivalent binary
+    Edwards curve.\footnote{$d_1$ is called $c$ in \texttt{e2c2}.}
+This function is in turn used to implement other functions in \texttt{mol.h}.
+
+\texttt{mol\_alg\_1} is definitely too low-level for typical use, while other
+functions in this file are probably more user friendly; programmers interested
+    in the \texttt{e2c2} library will find most useful
+\begin{itemize}
+\item \texttt{from\_weierstrass}, which takes $n$, $m$, $a_2$, and $a_6$ as
+    arguments and returns a BinaryCurve
+\item \texttt{mol\_bm\_aff}, which implements the birational map from
+    \cite{moloneyefficient} for Affine points
+\item \texttt{mol\_bm\_proj}, which implements the birational map from
+    \cite{moloneyefficient} for Projective points
+\end{itemize}
+
+\bodysubsection{\texttt{utilities.h}}
+
+The other utility file is called, rather aptly, \texttt{utilities.h}.
+This file contains a routine to set a parameter given a string in hex or not;
+    this routine, called \texttt{set\_parameter}, is helpful in constructing
+    the curves specified in various standards like \cite{gallagher09fipspub}.
+\texttt{utilities.h} also specifies the various C++ exceptions created to
+    signal fatal error conditions to users of \texttt{e2c2}:
+\begin{itemize}
+\item \texttt{InvalidParametersException}, which is thrown when one tries to
+    construct a curve with parameters that are invalid
+\item \texttt{DifferentCurvesException}, which is thrown when attempting to
+    perform an operation involving two points from different curves
+\item \texttt{NotImplementedException}, which is left over from \texttt{e2c2}'s
+    development; it was used (and can be used again, as development of this
+    library continues) to indicate that the edge of current implementation had
+    been reached but the functionality in question was planned for future work
+\end{itemize}
+
+\bodysection{Examples}
+
+Probably the best exposition we can have of \texttt{e2c2} is to see it in
+    action; as such, we present four example C++ files that can be compiled
+    and run to demonstrate the library's functionality and usage.
+All examples have been compiled and tested with the following command and
+    options:\footnote{The \texttt{-Weffc++} option tells the compiler to warn
+    about C++ code that doesn't meet the high standards set by
+    \cite{meyers2005effective}.}
+\begin{lstlisting}[caption={Compiler Options},language=HTML]
+g++-4.7 -Wall -Wextra -Weffc++ -pedantic -O3 -m64 -std=c++11 -lntl -lgmp
+\end{lstlisting}
+Specifically, all this code was compiled with the GNU C++ compiler version 4.7
+    (see \cite{stallman2002gnu}), though any compiler and standard library that
+    implements most of the C++11 standard should work.
+
+\bodysubsection{\texttt{curves\_test.cc}}
+
+The first example file is \texttt{curves\_test.cc}.
+In this program, there are three different subroutines that can all be called
+    by the main routine, depending on user input.
+Each specifies a type of Edwards curve---odd, binary, or twisted---to construct
+    and output some information about.
+The binary example is slightly more involved, since it builds a curve from the
+    Weierstrass equivalent and later intentionally crashes by trying to make a
+    curve with invalid parameters.
+
+\bodysubsection{\texttt{points\_test.cc}}
+
+The next example file is similar; it shows the creation and usage of points,
+    both affine and projective, over all three types of Edwards curves.
+Again, the user can specify a specific type of curve to work over; once that is
+    done, the program
+\begin{enumerate}
+\item builds the appropriate curve
+\item constructs an affine identity element on that curve and outputs it
+\item constructs two projective points, one of which is the neutral element and
+    one which is not
+\item demonstrates point addition, negation, and scalar multiplication with
+    these points
+\end{enumerate}
+
+\bodysubsection{\texttt{key\_demo.cc}}
+
+The third example file is a little more involved.
+This program gives a short Diffie-Hellman key exchange demonstration.
+After some setup, we join our friends Alice and Bob as they try to construct a
+    shared key so as to communicate in private.
+After deciding (in public) on a base point $P$, Alice and Bob pick private
+    random scalars $a$ and $b$, respectively.
+Then Alice computes and publishes $aP$ while Bob does the same with $bP$.
+Their shared key is $a(bP) = b(aP)$; the code double-checks that all
+    calculations went according to plan.
+
+Here is the output of an example run of this program, slightly reformatted:
+\lstinputlisting[caption={Output of key\_demo.cc},language=HTML]{listings/key_demo.txt}
+
+\bodysubsection{\texttt{ecoh\_echo.cc}}
+
+As a final example, we draw the reader's attention to the sourcecode listing in
+    the first section of Chapter \ref{chp:app}.
+In it we provide \texttt{ecoh\_echo.cc}, a reference implementation of our
+    password based key derivation function described in that section.
+It is probably the best non-trivial example of using \texttt{e2c2} for
+    cryptographic exploration and implementation.

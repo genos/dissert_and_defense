@@ -1,0 +1,329 @@
+\bodychapter{Binary Edwards Curves}
+\label{chp:bec}
+
+In this chapter we discuss binary Edwards curves.
+We'll start with a discussion of the work of \cite{bernstein2008binary}, the
+    first paper to lay out an ``Edwards-like'' elliptic curve over a field of
+    characteristic two.
+Then, we'll look at the practical improvements provided by
+    \cite{moloneyefficient}.
+
+Bernstein, Lange, and Farashahi's paper \cite{bernstein2008binary} presented
+    ``the first complete addition formulas for binary elliptic curves.''
+As such, it was a huge milestone in the field; binary elliptic curves are very
+    attractive from an implementation standpoint because, after all, computers
+    work in binary.
+Until this paper came along, ECC implementations over a binary finite field
+    were inherently vulnerable to the types of side-channel attacks mentioned
+    in the previous chapter.
+Moloney, O'Mahony, and Laurent's paper \cite{moloneyefficient} extended this
+    work, presenting algorithms and practical measurements of things like code
+    complexity that matter to implementors of cryptographic primitives.
+
+\bodysection{Bernstein, Lange, \& Farashahi}
+
+Unfortunately for cryptographers, the Edwards curve equation $x^2 + y^2 = c^2(1
+    + dx^2y^2)$ is not elliptic over fields with characteristic two; if it
+    were, one could just use Edwards curves (or twisted Edwards curves) over
+    these fields and reap the same benefits that we did over non-binary fields.
+In 2008, Bernstein, Lange, and Farashahi came up with a normal form for
+    elliptic curves over binary fields that is reminiscent of Edwards curves
+    which they dubbed \textit{binary Edwards curves}.
+
+\begin{dfn}
+Let $K$ be a field with $char(K) = 2$, and $d_1, d_2 \in K$ such that
+    $d_1 \ne 0$ and $d_2 \ne d_1^2 + d_1$.
+The \textit{binary Edwards curve} $E_{B, d_1, d_2}$ is the affine curve
+\[
+d_1(x + y) + d_2(x^2 + y^2) = xy(x + 1)(y + 1)
+\]
+\end{dfn}
+
+As you can see from the definition, $E_{B, d_1, d_2}$ is symmetric in $x$ and
+    $y$, so if $(x, y)$ is a point on $E_{B, d_1, d_2}$ then so is $(y, x)$;
+    this will soon yield our negation law.
+There are only two points on the curve that are invariant under this law: $(0,
+    0)$ and $(1, 1)$.
+As we'll see shortly, the former will be our neutral element, while the latter
+    will be a point of order two.
+
+In their theorem (2.2), the authors of \cite{bernstein2008binary} show that
+    the affine form of $E_{B, d_1, d_2}$ is nonsingular.
+Shortly after, they look at singularities of the projective closure
+\[
+d_1(X + Y)Z^3 + d_2(X^2 + Y^2)Z^2 = XY(X + Z)(Y + Z)
+\]
+    of which there are two: $\Omega_1 = (1 : 0 : 0)$ and $\Omega_2 = (0 : 1 :
+    0)$.
+We'll expand on their work to show that the first of these blows up to two
+    projective points, and use their same appeal to symmetry to cover the
+    second.
+
+To study $E_{B, d_1, d_2}$ around $\Omega_1$, consider the affine curve
+    $E_{\Omega_1}$:
+\[
+d_1(1 + y)z^3 + d_2(1 + y^2)z^2 + y(1 + z)(y + z) = 0
+\]
+If we take the partial derivatives of this curve with respect to $y$ and $z$,
+    we get
+\begin{align*}
+\frac{\partial E_{\Omega_1}}{\partial y}
+    &=  d_1z^3 + 2d_2yz^2 + (z + 1)(y + z) + (z + 1)y\\
+    &=  d_1z^3 + 2d_2yz^2 + 2yz + z^2 + 2y + z\\
+    &=  d_1z^3 + z^2 + z
+\end{align*}
+    and
+\begin{align*}
+\frac{\partial E_{\Omega_1}}{\partial z}
+    &=  3(y + 1)d_1z^2 + 2(y^2 + 1)d_2z + (z + 1)y + (y + z)y\\
+    &=  3d_1yz^2 + 2d_2y^2z + 3d_1z^2 + 2d_2z + y^2 + 2yz + y\\
+    &=  d_1(1 + y)z^2 + y^2 + y
+\end{align*}
+Evaluating these at the point $(y, z) = (0, 0)$, we see that $E_{\Omega_1}$ is
+    indeed singular; we can ``blow up'' this singularity by substituting $y =
+    tz$ into $E_{\Omega_1}$ and dividing through by $z^2$, getting the
+    following curve $E_t$:
+\[
+d_1(1 + tz)z + d_2(1 + t^2z^2) + t(1 + t)(1 + z) = 0
+\]
+If we substitute in $z = 0$, $E_t$ becomes $t^2 + t + d_2 = 0$ which has two
+    distinct roots in $\overline{K}$.
+To see that these two points are nonsingular, consider the partial derivatives
+\begin{align*}
+\frac{\partial E_t}{\partial t}
+    &=  2d_2tz^2 + d_1z^2 + (z + 1)(t + 1) + (z + 1)t\\
+    &=  2d_2tz^2 + d_1z^2 + 2tz + 2t + z + 1\\
+    &=  d_1z^2 + z + 1
+\end{align*}
+    and
+\begin{align*}
+\frac{\partial E_t}{\partial z}
+    &=  2d_2t^2z + d_1tz + (t + 1)t + (tz + 1)d_1\\
+    &=  2d_2t^2z + 2d_1tz + t^2 + d_1 + t\\
+    &=  t^2 + d_1 + t
+\end{align*}
+Neither of these partial derivatives vanish at the point $(z, t) = (0, 0)$, so
+    these blowups are nonsingular.
+As \cite{bernstein2008binary} says, they are ``defined over the smallest
+    extension of $K$ in which $d_2 + t + t^2 = 0$ has roots.''
+
+The authors provide the following birational equivalence: the map
+\begin{align*}
+(x, y)
+    &\mapsto    (u, v)\\
+    &=  \left(
+            \frac{d_1(d_1^2 + d_1 + d_2)(x + y)}{xy + d_1(x + y)}
+            ,
+            d_1(d_1^2 + d_1 + d_2)\left[
+                \frac{x}{xy + d_1(x + y)} + d_1 + 1
+            \right]
+        \right)
+\end{align*}
+    is a birational equivalence\footnote{Though we'll use the equivalence given
+    in \cite{moloneyefficient} ourselves.} between $E_{B, d_1, d_2}$ and the
+    binary elliptic curve $W$\footnote{In shorter Weierstrass form for binary
+    curves}
+\[
+v^2 + uv = u^3 + (d_1^2 + d_2)u^2 + d_1^4(d_1^4 + d_1^2 + d_2^2)
+\]
+This map has inverse
+\[
+(u, v) \mapsto (x, y)
+    =   \left(
+            \frac{d_1(u + d_1^2 + d_1 + d_2)}
+                {u + v + (d_1^2 + d_1)(d_1^2 + d_1 + d_2)}
+            ,
+            \frac{d_1(u + d_1^2 + d_1 + d_2)}
+                {v + (d_1^2 + d_1)(d_1^2 + d_1 + d_2)}
+        \right)
+\]
+This map is undefined at the point $(0, 0)$; if we define $(0, 0) \mapsto
+    \infty$, then this becomes an isomorphism between the curves.
+
+The addition law on a binary Edwards curve is just as symmetric as its ordinary
+    and twisted counterparts, if a little more complicated:
+
+\begin{thm}[Binary Edwards Addition Law]
+If $(x_1, y_1)$ and $(x_2, y_2)$ are two points on the binary Edwards curve
+    $E_{B, d_1, d_2}$, then the mapping $(x_1, y_1), (x_2, y_2) \mapsto (x_3,
+    y_3)$ turns the rational points on this curve into an abelian group, where
+\begin{align*}
+x_3 &=  \frac{d_1(x_1 + x_2) + d_2(x_1 + y_1)(x_2 + y_2) + (x_1 + x_1^2)
+            (x_2(y_1 + y_2 + 1) + y_1y_2)}{d_1 + (x_1 + x_1^2)(x_2 + y_2)}\\
+y_3 &=  \frac{d_1(y_1 + y_2) + d_2(x_1 + y_1)(x_2 + y_2) + (y_1 + y_1^2)
+            (y_2(x_1 + x_2 + 1) + x_1x_2)}{d_1 + (y_1 + y_1^2)(x_2 + y_2)}
+\end{align*}
+    as long as the denominators in the above fractions are nonzero.
+\end{thm}
+Substituting $(0, 0)$ for either $(x_1, y_1)$ or $(x_2, y_2)$ in the above law,
+    we see that $(0, 0)$ is the neutral element.
+Moreover, $(x, y) + (y, x) = (0, 0)$, so the inverse of a point $(x, y)$ is
+    $(y, x)$ as we said before.
+When defined, this addition law is unified; it can be used for doubling as
+    well.
+For a proof of this law, see section 3 of \cite{bernstein2008binary}; in that
+    section, the authors demonstrate that this addition law corresponds to the
+    addition law on the equivalent Weierstrass curve, so the birational map is
+    indeed a isomorphism.
+
+Astute readers will notice the caveat ``as long as the denominators in the
+    above fractions are nonzero'' in the previous theorem.
+We could try and list all the cases where those fractions don't exist and piece
+    together a group law that takes these special cases into account, like the
+    Weierstrass group law does.
+However, Bernstein, Lange, and Farashahi offer us another very helpful theorem.
+
+\begin{thm}[Complete Binary Edwards Curves]
+Let $K$ be a field with $char(K) = 2$ and $d_1, d_2 \in K$ such that $d_1 \ne
+    0$ and no element $t \in K$ satisfies $t^2 + t + d_2 = 0$.
+Then the addition law on the binary Edwards curve $E_{B, d_1, d_2}(K)$ is
+    complete.
+Moreover, every ordinary elliptic curve over the finite field
+    $\mathbb{F}_{2^n}$ for $n \ge 3$ is birationally equivalent over
+    $\mathbb{F}_{2^n}$ to a complete binary Edwards curve.
+\end{thm}
+See theorems (4.1) and (4.3) for proofs of these claims.
+Since elliptic curve cryptography typically involves finite binary fields of
+    degree $n$ at least $160$, the above theorem tells us that we can use a
+    binary Edwards curve and reap the benefits of a complete and unified group
+    law.
+
+Despite their extremely thorough treatment in \cite{bernstein2008binary},
+    Bernstein, Lange, and Farashahi did leave some small room for improvement.
+In trying to find an equivalent complete binary Edwards curve for a given
+    Weierstrass curve, they left some nondeterminism in finding $d_1$.
+Though they could find an appropriate $d_1$ easily enough experimentally, they
+    didn't have a  deterministic algorithm for it.
+
+\bodysection{Moloney, O'Mahony, \& Laurent}
+
+In 2010, Moloney, O'Mahony, and Laurent posted \cite{moloneyefficient} online.
+In it, they perform a practical, implementation-focused analysis of binary
+    Edwards curves, and come up with some very useful results.
+
+First, they offer a modified birational equivalence.
+Recall the usual trace function
+\[
+Tr: \mathbb{F}_{2^n} \to \mathbb{F}_2, \qquad
+    \alpha \mapsto \sum_{i = 0}^{n - 1} \alpha^{2^i}
+\]
+    and define the half-trace function
+\[
+H: \mathbb{F}_{2^n} \to \mathbb{F}_2, \qquad
+    \alpha \mapsto \sum_{i = 0}^{\sfrac{(n - 1)}{2}} \alpha^{2^{2^i}}
+\]
+    (noting that $n$ must be odd).
+If given $a_2$ and $a_6$ for a Weierstrass curve, suppose we found a suitable
+    $d_1$; we can then calculate
+\[
+d_2 = d_1^2 + d_1 + \sfrac{\sqrt{a_6}}{d_1^2}
+\]
+We will also make use of $b$ which satisfies $b^2 + b = d_1^2 + d_2 + a_2$; it
+    can be directly calculated as
+\[
+b = H(d_1^2 + d_2 + a_2)
+\]
+The authors show that $(u, v) \mapsto (x, y)$ is another birational equivalence
+    from the Weierstrass curve to $E_{B, d_1, d_2}$, where
+\begin{align*}
+x   &=  \frac{d_1(bu + v + (d_1^2 + d_1)(d_1^2 + d_1 + d_2))}
+        {u^2 + d_1u + d_1^2(d_1^2 + d_1 + d_2)}\\
+y   &=  \frac{d_1((b + 1)u + v + (d_1^2 + d_1)(d_1^2 + d_1 + d_2))}
+        {u^2 + d_1u + d_1^2(d_1^2 + d_1 + d_2)}
+\end{align*}
+Though there is no difference between this equivalence and the one presented by
+    Bernstein et.al., the calculation of this equivalence involves fewer field
+    inversions.
+Field inversions tend to be very costly to calculate, so the fewer the
+    better.\footnote{\texttt{e2c2} uses this birational equivalence.}
+
+Secondly, and perhaps more importantly, the authors present two deterministic
+    algorithms to find a suitable $d_1$ given $n \ge 3$, $a_2$, and $a_6$
+    determining a Weierstrass curve over the finite field $\mathbb{F}_{2^n}$.
+We reproduce the first algorithm here, since that's what is used in our
+    software library \texttt{e2c2}.
+Precompute $t = Tr(a_2)$, $r = Tr(a_6)$, and $w = x + Tr(x)$ where $x$ is the
+    indeterminant used to define our field extension $\mathbb{F}_{2^n}$.
+This algorithm ``terminates with guaranteed success in a finite number of
+    steps, except in the case $t = r = 0$.''
+Fortunately, ``this case does not appear in any of the standards (e.g. NIST) of
+    which the authors are aware.''
+
+\begin{Algorithm}
+\caption{Moloney, O'Mahony, \& Laurent's first $d_1$ finder}
+\label{alg:d1}
+\begin{algorithmic}
+    \Function{MOLalg1}{$n, p, t, r, a_6, w$}
+        \If{$t = 0$ and $r = 1$}
+            \State $d_1 \gets 1$
+        \Else
+            \If{$t = 1$ and $r = 0$}
+                \State $d_1 \gets \sqrt[4]{a_6}$
+            \Else
+                \If{$t = r = 1$ and $a_6 \ne 1$}
+                    \If{$Tr(\sfrac{1}{a_6 + 1}) = 1$}
+                        \State $d_1 \gets \sqrt{a_6} + \sqrt[4]{a_6}$
+                    \Else
+                        \State $d_1 \gets \sqrt[4]{a_6} + 1$
+                    \EndIf
+                \Else
+                    \If{$t = 1$ and $a_6 = 1$}
+                        \If{$Tr(\sfrac{1}{w}) = 1$}
+                            \State $d_1 \gets w$
+                        \Else
+                            \If{$Tr(\sfrac{1}{(w + 1)}) = 0$}
+                                \State $d_1 \gets \sfrac{1}{(w + 1)}$
+                            \Else
+                                \State $d_1 \gets 1 = \sfrac{1}{(w + 1)}$
+                            \EndIf
+                        \EndIf
+                    \Else
+                        \If{$t = r = 0$}
+                            \If{$Tr(\sfrac{1}{(a_6 + 1)}) = 0$}
+                                \State $d_1 \gets \sqrt[4]{a_6} + 1$
+                            \Else
+                                \State $i \gets 1$
+                                \State $s \gets \sqrt{a_6}$
+                                \While{$Tr(a_6^{2^i + 1}) = 0$}
+                                    \State $s \gets s^2$
+                                    \State $i \gets i + 1$
+                                \EndWhile
+                                \State $d_1 \gets \sfrac{1}{(s + 1)}$
+                            \EndIf
+                        \EndIf
+                    \EndIf
+                \EndIf
+            \EndIf
+        \EndIf
+        \State \Return $d_1$
+    \EndFunction
+\end{algorithmic}
+\end{Algorithm}
+
+Finally, \cite{moloneyefficient} offers some valuable measurements and
+    comparisons between implementations of Weierstrass and binary Edwards
+    curves.
+They note that ``implementing ECC from the textbooks leaves us with incredibly
+    complex code,'' while implementations of binary Edwards curves have lower
+    complexity.
+The symmetric, unified, and complete group law takes a lot of the burden off of
+    potential developers and implementors.
+More interestingly, despite the larger operation count for the binary Edwards
+    addition law, the fact Weierstrass implementations must constantly check
+    for special cases slows them down considerably.
+The cost measurements commonly mentioned in the literature ``do not take into
+account the cost of checking'' if an operation ``is attempting to double the
+    point at infinity,'' for example.
+Moreover, ``performance is significantly different if implemented on a
+    different processor.''
+Integrating binary Edwards code into an existing ECC library, they found on one
+    processor that, as may be expected, the binary Edwards curve code was
+    slower.
+However, on a different processor that pipelined instructions, the
+    implementation could take advantage of the fact that the binary Edwards
+    curve addition law involves no conditionals; ``due to the fact that we do
+    not have to break the pipeline with checks for the point of infinity,''
+    along with some other, more esoteric technical work on the part of the
+    authors, ``we are able to increase the performance of [binary Edwards
+    curves] such that it is approximately $25\%$ faster than the equivalent
+    Weierstrass version.''

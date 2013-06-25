@@ -1,0 +1,80 @@
+\bodychapter{Introduction}
+\label{chp:intro}
+
+The group of rational points on an elliptic curve over a finite field has
+    proven very useful in cryptography since Miller and Koblitz first suggested
+    its use independently in the 1980s (\cite{miller1986use} and
+    \cite{koblitz1987elliptic}).
+Due to the lack of subexponential algorithms to solve the Discrete Logarithm
+    Problem in this group, elliptic curve cryptography cryptosystems tend have
+    to have a level of security comparable to other ElGamal-type systems (e.g.
+    ones that use the DLP, or more precisely the Diffie Hellman problem, over
+    the multiplicative group $\mathbb{F}_{p}^\ast$; see
+    \cite{stinson2005cryptography}) while using much smaller key sizes.
+Moreover, the group of points on an elliptic curve $E$ over a finite field $K$
+    is rather nice to work with; it's isomorphic to either a cyclic group or
+    the direct product of two cyclic groups and (at least in the typical
+    Weierstrass coordinates) has a simple geometric interpretation.
+
+There is some room for improvement, however.
+Typically the group operation on $E$ involves a number of special cases, all of
+    which must be checked for at every turn:
+\begin{itemize}
+\item   What if one point is the neutral element, the so-called ``point at
+    infinity?''
+\item   What if the two points are the same?
+    What if their $x$-coordinate is zero?
+\item   What if the two points are inverses of each other?
+\end{itemize}
+In each of these cases, the exception to the usual formula can cause
+    implementations to giving up more information to outside observers than
+    intended---leaking ``side channel information.''
+That is, though the theory of elliptic curve cryptography is perfectly sound
+    from a mathematical standpoint, in practice it is either less secure (or at
+    least more complicated) than originally thought due to shortcomings in the
+    theory's applicability.
+Such types of attacks have been outlined in papers like
+    \cite{brier2002weierstrass} and \cite{izu2002exceptional}, and considerable
+    effort has been spent trying to make Weierstrass curve implementations
+    secure ``after the fact,'' as it were; see e.g. \cite{moller2001securing}.
+
+In 2007, Dr. Harold Edwards discussed a new normal form for elliptic curves in
+    \cite{edwards2007normal}.
+Despite his paper not focusing on cryptography, the normal form put forth by
+    Edwards has very desirable cryptographic properties that help combat the
+    leakage of side-channel information from the very start; as noted by
+    Bernstein and Lange in \cite{bernstein2007faster}, the group law is
+    \textit{complete} and \textit{unified}, two terms we will discuss later.
+Moreover, in many cases the group law involves less operations, meaning that
+    the more secure computations involved can also be faster.
+While this is not the case over binary fields, the benefits of the law's
+    completeness make the loss of speed seem negligible; in fact,
+    \cite{moloneyefficient}'s authors argue that with specialized hardware
+    the speed difference can be greatly reduced, while the completeness of the
+    binary Edwards curve group law actually makes it faster than Weierstrass
+    implementations that must constantly check for special cases.
+Add to this the reduced complexity of implementation code, and binary Edwards
+    are just as competitive as their non-binary counterparts.
+
+Though there has been significant work to build up the literature on Edwards
+    curves, there is still room to explore the cryptographic and mathematical
+    aspects of these new normal forms.
+In this dissertation we do just that, specifically focusing on binary Edwards
+    curves (which have been explored less than other types).
+Our work is as follows: in Chapter \ref{chp:back}, we begin with the necessary
+    background on elliptic curves, elliptic curve cryptography, and two of the
+    three types of Edwards curves.
+Then in Chapter \ref{chp:bec}, we build on the theoretical foundation of the
+    previous Chapter to discuss binary Edwards curves.
+Next, in Chapter \ref{chp:prax}, we examine the practical considerations
+    involved in applying that theory in cryptographic practice, including a
+    discussion of the shortcomings of four recently proposed normal forms.
+After that, we explore pairing computations over binary Edwards curves in
+    \ref{chp:pair}.
+In \ref{chp:app}, we focus on two applications of binary Edwards curves to
+    cryptography: password-based key derivation functions and a compartmented
+    secret sharing scheme with signcryption.
+Finally, in Appendix \ref{chp:e2c2} we discuss \texttt{e2c2}, a modern computer
+    software library written in C++11 to perform Edwards elliptic curve
+    cryptography built on top of Shoup's \texttt{NTL} \cite{shoup2009ntl}; the
+    sourcecode for \texttt{e2c2} is included in appendix \ref{chp:src}.
